@@ -37,7 +37,7 @@ def dicehandler(update, context):
     dice_value = update.message.dice.value
     user_name = update.message.from_user.first_name
     user_id = update.message.from_user.id
-    if str(user_name) in str(game_values) or str(user_id) not in str(players):
+    if str(user_id) not in str(players):
         return
     if GAME_STATE:
         game_values[dice_value].extend([user_name])
