@@ -11,10 +11,9 @@ import pickledb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext.dispatcher import run_async
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler)
+from logzero import logger, loglevel
 
-logging.basicConfig(format='%(message)s', level=logging.INFO)
-
-logger = logging.getLogger(__name__)
+loglevel(logging.DEBUG)
 
 db = pickledb.load('leaderboard.db', True)
 
@@ -41,6 +40,7 @@ def dicehandler(update, context):
         return
     if GAME_STATE:
         game_values[dice_value].extend([user_name])
+        del players[user_id]
         return
 
 
@@ -80,6 +80,7 @@ def scenehandler(update, context):
             text = "The game is in progress.."
             context.bot.send_message(chat_id=group_id, text=text)
             return
+        reset()
         GAME_STATE = True
         text = "The game is going to start"
         keyboard = [[InlineKeyboardButton("Join the game", callback_data=str(user_id))]]
@@ -137,6 +138,12 @@ def scenehandler(update, context):
     elif text == "/reset":
         reset()
         context.bot.send_message(chat_id=chat_id, text="☑️ Reset done!")
+    elif text == "/info":
+        text = "GAME_STATE: {}\nplayers: {}\ngame_values: {}".format(GAME_STATE, players, game_values)
+        context.bot.send_message(chat_id=group_id, text=text)
+    elif text == "/leaderboard":
+        text = "Work in Progress!"
+        context.bot.send_message(chat_id=group_id, text=text)
 
 
 def reset():
