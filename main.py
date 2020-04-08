@@ -7,6 +7,7 @@ import logging
 from itertools import chain
 import functools
 import operator
+import pickledb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext.dispatcher import run_async
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler)
@@ -14,6 +15,8 @@ from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, Call
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 logger = logging.getLogger(__name__)
+
+db = pickledb.load('leaderboard.db', True)
 
 GAME_STATE = False
 players = {}
@@ -30,8 +33,12 @@ def help(update, context):
 
 def dicehandler(update, context):
     global game_values
+    global players
     dice_value = update.message.dice.value
     user_name = update.message.from_user.first_name
+    user_id = update.message.from_user.id
+    if str(user_name) in str(game_values) or str(user_id) not in str(players):
+        return
     if GAME_STATE:
         game_values[dice_value].extend([user_name])
         return
@@ -59,11 +66,14 @@ def scenehandler(update, context):
     global GAME_STATE
     global group_id
     global game_values
-    text = update.message.text
-    chat_id = update.message.chat.id
-    user_id = update.message.from_user.id
-    message_id = update.message.message_id
-    user_name = update.message.from_user.first_name
+    try:
+        text = update.message.text
+        chat_id = update.message.chat.id
+        user_id = update.message.from_user.id
+        message_id = update.message.message_id
+        user_name = update.message.from_user.first_name
+    except AttributeError:
+        return
     # fetch, validate, process and add
     if "/begin" in text:
         if GAME_STATE:
@@ -77,9 +87,9 @@ def scenehandler(update, context):
         context.bot.send_message(chat_id=group_id, text=text, reply_markup=reply_markup)
         context.bot.send_message(chat_id=group_id, text="waiting for members to join..")
         for i in range(10, 0, -1):
-            text = i
+            # text = i
             time.sleep(1)
-            #context.bot.edit_message_text(chat_id=group_id, message_id=message_id+2, text=text)
+            # context.bot.edit_message_text(chat_id=group_id, message_id=message_id+2, text=text)
         global players
         context.bot.send_message(chat_id=group_id, text="starting the game with {} players..".format(len(list(players.keys()))))
         context.bot.send_message(chat_id=group_id, text="Throw your dices!")
@@ -161,7 +171,7 @@ def query_handler(update, context):
     keyboard = [[InlineKeyboardButton("Join the game", callback_data=str(user_id))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     query.edit_message_text(text=text, reply_markup=reply_markup)
-    context.bot.send_message(chat_id=group_id, text=f"{user_name} joined the session.")
+    # context.bot.send_message(chat_id=group_id, text=f"{user_name} joined the session.")
 
 
 def error(update, context):
@@ -177,7 +187,7 @@ def main():
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
-    dp.add_handler(MessageHandler(Filters.text, scenehandler))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.private, scenehandler))
     dp.add_handler(CallbackQueryHandler(query_handler))
     dp.add_handler(MessageHandler(Filters.dice & ~Filters.forwarded, dicehandler))
     dp.add_error_handler(error)
