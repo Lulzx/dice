@@ -76,21 +76,22 @@ def scenehandler(update, context):
         reply_markup = InlineKeyboardMarkup(keyboard)
         context.bot.send_message(chat_id=group_id, text=text, reply_markup=reply_markup)
         context.bot.send_message(chat_id=group_id, text="waiting for members to join..")
-        for i in range(5, 0, -1):
+        for i in range(10, 0, -1):
             text = i
             time.sleep(1)
-            context.bot.edit_message_text(chat_id=group_id, message_id=message_id+2, text=text)
+            #context.bot.edit_message_text(chat_id=group_id, message_id=message_id+2, text=text)
         global players
-        context.bot.edit_message_text(chat_id=group_id, message_id=message_id+2, text="starting the game with {} players..".format(len(list(players.keys()))))
+        context.bot.send_message(chat_id=group_id, text="starting the game with {} players..".format(len(list(players.keys()))))
         context.bot.send_message(chat_id=group_id, text="Throw your dices!")
-        for i in range(5):
+        for i in range(10):
             time.sleep(1)
         context.bot.send_message(chat_id=group_id, text="Time's up, over!")
         final = context.bot.send_dice(chat_id=group_id)
         time.sleep(1)
         dice_value = final.dice.value
+        string = "No winners this time :("
         try:
-            winners = [v for k,v in game_values.items() if k >= dice_value]
+            winners = [v for k,v in game_values.items() if k > dice_value or k == 6]
             winners = functools.reduce(operator.iconcat, list(filter(None, winners)), [])
             len_winners = len(winners)
             if len_winners > 1:
@@ -100,12 +101,14 @@ def scenehandler(update, context):
                         string += "├ " + str(winner) + "\n"
                     else:
                         string += "└ " + str(winner)
-            else:
+            elif len_winners == 1:
                 string = str(winners[0]) + " is the winner! 🥳"
         except KeyError:
             string = "No winners this time :("
-        reset()
+        except IndexError:
+            string = "Nobody participated this time :("
         context.bot.send_message(chat_id=group_id, text=string)
+        reset()
     elif text == "/cancel":
         GAME_STATE = False
         text = "The game has been dismissed."
@@ -151,7 +154,7 @@ def query_handler(update, context):
         text="The game has already end before. start a new one. 😛"
         context.bot.answer_callback_query(query.id, text=text, show_alert=True)
         return
-    text = "You have 5 seconds to join.\n"
+    text = "You have 10 seconds to join.\n"
     text += "You'll need at least two other friends in order to play.\n"
     text += "Player List:\n"
     text += list_builder(user_id, user_name)
