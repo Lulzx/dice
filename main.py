@@ -5,7 +5,10 @@ import sys
 import time
 import logging
 from itertools import chain
+import functools
+import operator
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
+from telegram.ext.dispatcher import run_async
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler)
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
@@ -15,7 +18,7 @@ logger = logging.getLogger(__name__)
 GAME_STATE = False
 players = {}
 group_id = -1001250957853
-game_values = {}
+game_values = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []}
 
 def start(update, context):
     update.message.reply_text('henlo frens, welcome to the dice game!\nsend /begin to get started.')
@@ -26,12 +29,11 @@ def help(update, context):
 
 
 def dicehandler(update, context):
-    global group_id
     global game_values
     dice_value = update.message.dice.value
-    user_id = update.message.from_user.id
+    user_name = update.message.from_user.first_name
     if GAME_STATE:
-        game_values[user_id] = value
+        game_values[dice_value].extend([user_name])
         return
 
 
@@ -52,6 +54,7 @@ def list_builder(user_id, user_name):
     return string
 
 
+@run_async
 def scenehandler(update, context):
     global GAME_STATE
     global group_id
@@ -63,6 +66,10 @@ def scenehandler(update, context):
     user_name = update.message.from_user.first_name
     # fetch, validate, process and add
     if "/begin" in text:
+        if GAME_STATE:
+            text = "The game is in progress.."
+            context.bot.send_message(chat_id=group_id, text=text)
+            return
         GAME_STATE = True
         text = "The game is going to start"
         keyboard = [[InlineKeyboardButton("Join the game", callback_data=str(user_id))]]
@@ -78,26 +85,26 @@ def scenehandler(update, context):
         context.bot.send_message(chat_id=group_id, text="Throw your dices!")
         for i in range(5):
             time.sleep(1)
-        winners = {}
-        for key, value in game_values.items():
-            if value not in winners: 
-                winners[value] = [key] 
-            else: 
-                winners[value].append(key)
+        context.bot.send_message(chat_id=group_id, text="Time's up, over!")
         final = context.bot.send_dice(chat_id=group_id)
         time.sleep(1)
-        value = final.dice.value
-        winners = winners[value]
-        len_winners = len(winners)
-        if len_winners > 1:
-            string = "🎉 List of winners:\n"
-            for n, winner in enumerate(winners):
-                if n < len_winners - 1:
-                    string += "├ " + winner + "\n"
-                else:
-                    string += "└ " + winner
-        else:
-            string = winners[0] + " is the winner! 🥳"
+        dice_value = final.dice.value
+        try:
+            winners = [v for k,v in game_values.items() if k >= dice_value]
+            winners = functools.reduce(operator.iconcat, list(filter(None, winners)), [])
+            len_winners = len(winners)
+            if len_winners > 1:
+                string = "🎉 List of winners:\n"
+                for n, winner in enumerate(winners):
+                    if n < len_winners - 1:
+                        string += "├ " + str(winner) + "\n"
+                    else:
+                        string += "└ " + str(winner)
+            else:
+                string = str(winners[0]) + " is the winner! 🥳"
+        except KeyError:
+            string = "No winners this time :("
+        reset()
         context.bot.send_message(chat_id=group_id, text=string)
     elif text == "/cancel":
         GAME_STATE = False
@@ -115,14 +122,24 @@ def scenehandler(update, context):
             text = "⛔️ The game has not started yet."
         context.bot.send_message(chat_id=group_id, text=text)
     elif text == "/reset":
-        GAME_STATE = False
-        players = {}
+        reset()
         context.bot.send_message(chat_id=chat_id, text="☑️ Reset done!")
+
+
+def reset():
+    global GAME_STATE
+    global players
+    global game_values
+    GAME_STATE = False
+    players = {}
+    game_values = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []}
+    return
 
 
 def query_handler(update, context):
     global group_id
     global players
+    global GAME_STATE
     query = update.callback_query
     user_name = query.from_user.first_name
     user_id = query.from_user.id
@@ -130,7 +147,11 @@ def query_handler(update, context):
         text="You are already in the game! 😉"
         context.bot.answer_callback_query(query.id, text=text, show_alert=False)
         return
-    text = "You have 15 seconds to join.\n"
+    if GAME_STATE == False:
+        text="The game has already end before. start a new one. 😛"
+        context.bot.answer_callback_query(query.id, text=text, show_alert=True)
+        return
+    text = "You have 5 seconds to join.\n"
     text += "You'll need at least two other friends in order to play.\n"
     text += "Player List:\n"
     text += list_builder(user_id, user_name)
@@ -155,7 +176,7 @@ def main():
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(MessageHandler(Filters.text, scenehandler))
     dp.add_handler(CallbackQueryHandler(query_handler))
-    dp.add_handler(MessageHandler(Filters.dice, dicehandler))
+    dp.add_handler(MessageHandler(Filters.dice & ~Filters.forwarded, dicehandler))
     dp.add_error_handler(error)
     updater.start_polling()
     logger.info("Ready to rock..!")
