@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 db = TinyDB('db.json')
 player = Query()
 
+LIST_OF_ADMINS = [691609650]
 GAME_STATE = False
 wait_for_players = False
 players = {}
@@ -228,7 +229,6 @@ def scores(winners, names, nParticipants, losers):
     base_reward = 10
     for winner in winners:
         current = db.search(player.user_id == winner)
-        print(current)
         if current != []:
             winning_streak = int(current[0]['winning_streak']) + 1
             final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
@@ -246,6 +246,32 @@ def scores(winners, names, nParticipants, losers):
             final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
             db.update(decrement('winning_streak'), player.user_id == loser)
             db.update(add('score', final_score), player.user_id == loser)
+
+
+def restricted(func):
+    @wraps(func)
+    def wrapped(update, context, *args, **kwargs):
+        user_id = update.effective_user.id
+        if user_id not in LIST_OF_ADMINS:
+            print("Unauthorized access denied for {}.".format(user_id))
+            return
+        return func(update, context, *args, **kwargs)
+
+    return wrapped
+
+
+@restricted
+def backup(update, context):
+    update.message.reply_document(document=open('db.json', 'rb'))
+
+
+@restricted
+def backup_handler(update, context):
+    file = context.bot.get_file(update.message.document.file_id)
+    file_name = update.message.document.file_name
+    os.remove(file_name)
+    file.download(file_name)
+    update.message.reply_text(text="Alright! I have uploaded the backup.")
 
 
 def query_handler(update, context):
@@ -299,6 +325,8 @@ def main():
     dp.add_handler(MessageHandler(Filters.text & ~Filters.private, scenehandler))
     dp.add_handler(CallbackQueryHandler(query_handler))
     dp.add_handler(MessageHandler(Filters.dice & ~Filters.forwarded, dicehandler))
+    dp.add_handler(CommandHandler("backup", backup))
+    dp.add_handler(MessageHandler(Filters.document, backup_handler))
     dp.add_error_handler(error)
     updater.start_polling()
     logger.info("Ready to rock..!")
