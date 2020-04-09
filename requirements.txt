@@ -1,1 +1,7 @@
-python-telegram-bot
+https://github.com/python-telegram-bot/python-telegram-bot/archive/api-4.7.zip
+humanfriendly
+tabulate
+tinydb
+emoji
+numpy
+urllib3
