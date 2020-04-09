@@ -232,8 +232,9 @@ def scores(winners, names, nParticipants, losers):
         current = db.search(player.user_id == winner)
         if current != []:
             winning_streak = int(current[0]['winning_streak']) + 1
-            if winning_streak == 0:
+            if winning_streak == 0 or winning_streak < 0:
                 winning_streak = 1
+                db.update(set('winning_streak', 0), player.user_id == winner)
             final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
             db.update(increment('winning_streak'), player.user_id == winner)
             db.update(add('score', final_score), player.user_id == winner)
@@ -253,7 +254,7 @@ def scores(winners, names, nParticipants, losers):
             final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
             db.update(set('winning_streak', 0), player.user_id == loser)
             score = db.search(player.user_id == loser)[0]['score']
-            if score + final_score < 0:
+            if score + final_score < 0 or score - final_score < 0:
                 final_score = 0
             db.update(subtract('score', final_score), player.user_id == loser)
 
