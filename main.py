@@ -247,7 +247,7 @@ def scores(winners, names, nParticipants, losers):
         if current != []:
             winning_streak = int(current[0]['winning_streak']) - 1
             final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
-            db.update(decrement('winning_streak'), player.user_id == loser)
+            db.update(set('winning_streak', 0), player.user_id == loser)
             db.update(add('score', final_score), player.user_id == loser)
 
 
