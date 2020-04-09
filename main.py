@@ -246,9 +246,16 @@ def scores(winners, names, nParticipants, losers):
         current = db.search(player.user_id == loser)
         if current != []:
             winning_streak = int(current[0]['winning_streak']) - 1
+            if winning_streak == 0:
+                final_score = round(nParticipants*total_winners*base_reward, 2)
+                db.update(subtract('score', final_score), player.user_id == loser)
+                return
             final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
             db.update(set('winning_streak', 0), player.user_id == loser)
-            db.update(add('score', final_score), player.user_id == loser)
+            score = db.search(player.user_id == loser)[0]['score']
+            if score + final_score < 0:
+                final_score = 0
+            db.update(subtract('score', final_score), player.user_id == loser)
 
 
 def restricted(func):
