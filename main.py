@@ -4,9 +4,11 @@ import os
 import sys
 import time
 import logging
+import emoji
 from itertools import chain
 import functools
 import operator
+from humanfriendly import format_size, parse_size
 from tinydb import TinyDB, Query
 from tinydb.operations import increment, decrement, add, subtract, delete, set
 from tabulate import tabulate
@@ -16,7 +18,6 @@ from telegram.ext.dispatcher import run_async
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler)
 from telegram.error import (TelegramError, Unauthorized, BadRequest, 
                             TimedOut, ChatMigrated, NetworkError)
-import logging
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -112,7 +113,8 @@ def scenehandler(update, context):
                 context.bot.edit_message_text(chat_id=group_id, message_id=message_id, text=participated_text)
             except:
                 pass
-            nParticipants = len(list(players.keys()))
+            participants = list(players.keys())
+            nParticipants = len(participants)
             if nParticipants == 0:
                 context.bot.send_message(chat_id=group_id, text="Nobody participated :(")
                 reset()
@@ -129,12 +131,15 @@ def scenehandler(update, context):
             dice_value = final.dice.value
             string = "No winners this time :("
             try:
-                winners = [v for k,v in game_values.items() if (k % 2) == (dice_value % 2)]
+                winners = [v for k,v in game_values.items() if k > dice_value or k == 6]
                 winners = functools.reduce(operator.iconcat, list(filter(None, winners)), [])
                 len_winners = len(winners)
                 winners_name = list(np.array(winners).T[0])
                 winners_id = list(np.array(winners).T[1])
-                scores(winners_id, winners_name, nParticipants)
+                winners_id = list(map(int, winners_id))
+                time.sleep(1)
+                losers_id = list(filter(lambda x: x not in winners_id, participants))
+                scores(winners_id, winners_name, nParticipants, losers_id)
                 if len_winners > 1:
                     string = "🎉 List of winners:\n"
                     for n, winner in enumerate(winners_name):
@@ -150,13 +155,21 @@ def scenehandler(update, context):
                 string = "No winners this time :("
             context.bot.send_message(chat_id=group_id, text=string)
             if string.endswith(":("):
+                reset()
                 return
             table = []
-            headers = ["Name", "Score"]
+            headers = ["Name", "Brain RAM"]
             for i in range(len_winners):
                 name = winners_name[i]
                 user_id = winners_id[i]
-                score = str(db.search(player.user_id == str(user_id))[0]['score'])
+                try:
+                    score = db.search(player.user_id == user_id)[0]['score']
+                    score = str(format_size(parse_size(str(score))))
+                except IndexError:
+                    if len_winners == 1:
+                        reset()
+                        return
+                    continue
                 table.extend([[name, score]])
             text = "```{}```".format(str(tabulate(table, headers, tablefmt="presto", floatfmt=".2f")))
             context.bot.send_message(chat_id=group_id, text=text, parse_mode=ParseMode.MARKDOWN)
@@ -180,7 +193,7 @@ def scenehandler(update, context):
         reset()
         context.bot.send_message(chat_id=chat_id, text="☑️ Reset done!")
     elif text == "/info":
-        text = "GAME_STATE: {}\nplayers: {}\ngame_values: {}".format(GAME_STATE, players, game_values)
+        text = "Total players: {}".format(len(db))
         context.bot.send_message(chat_id=group_id, text=text)
     elif text == "/leaderboard":
         table = []
@@ -188,9 +201,10 @@ def scenehandler(update, context):
         result = sorted(undecorated, key=operator.itemgetter('score'), reverse=True)
         for i in range(len(result)):
             name = result[i]['name']
-            score = result[i]['score']
+            score = (result[i]['score'])
+            score = str(format_size(parse_size(str(score))))
             table.extend([[name, score]])
-        headers = ["Name", "Score"]
+        headers = ["Name", "Brain RAM"]
         text = "*Leaderboard*\n```{}```".format(str(tabulate(table, headers, tablefmt="presto", floatfmt=".2f")))
         context.bot.send_message(chat_id=group_id, text=text, parse_mode=ParseMode.MARKDOWN)
 
@@ -209,19 +223,29 @@ def reset():
     return
 
 
-def scores(winners, names, nParticipants):
+def scores(winners, names, nParticipants, losers):
     total_winners = len(winners)
     base_reward = 10
     for winner in winners:
-        current = db.search(player.user_id == str(winner))
+        current = db.search(player.user_id == winner)
+        print(current)
         if current != []:
             winning_streak = int(current[0]['winning_streak']) + 1
             final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
-            db.update(increment('winning_streak'), player.user_id == str(winner))
-            db.update(add('score', final_score), player.user_id == str(winner))
+            db.update(increment('winning_streak'), player.user_id == winner)
+            db.update(add('score', final_score), player.user_id == winner)
         else:
             name = names[winners.index(winner)]
+            name = emoji.get_emoji_regexp().sub(r'', name)
             db.insert({'name': str(name), 'user_id': winner, 'score': base_reward, 'winning_streak': 1})
+
+    for loser in losers:
+        current = db.search(player.user_id == loser)
+        if current != []:
+            winning_streak = int(current[0]['winning_streak']) - 1
+            final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
+            db.update(decrement('winning_streak'), player.user_id == loser)
+            db.update(add('score', final_score), player.user_id == loser)
 
 
 def query_handler(update, context):
@@ -272,7 +296,7 @@ def main():
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
-    dp.add_handler(MessageHandler(Filters.text, scenehandler))# & ~Filters.private, scenehandler))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.private, scenehandler))
     dp.add_handler(CallbackQueryHandler(query_handler))
     dp.add_handler(MessageHandler(Filters.dice & ~Filters.forwarded, dicehandler))
     dp.add_error_handler(error)
