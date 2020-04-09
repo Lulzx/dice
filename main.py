@@ -7,6 +7,7 @@ import logging
 import emoji
 from itertools import chain
 import functools
+from functools import wraps
 import operator
 from humanfriendly import format_size, parse_size
 from tinydb import TinyDB, Query
