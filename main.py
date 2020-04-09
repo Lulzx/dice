@@ -19,7 +19,7 @@ from telegram.error import (TelegramError, Unauthorized, BadRequest,
 import logging
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,10 @@ def scenehandler(update, context):
             context.bot.send_message(chat_id=group_id, text="waiting for members to join..")
             for i in range(10, 0, -1):
                 time.sleep(1)
-            context.bot.edit_message_text(chat_id=group_id, message_id=message_id, text=participated_text)
+            try:
+                context.bot.edit_message_text(chat_id=group_id, message_id=message_id, text=participated_text)
+            except:
+                pass
             nParticipants = len(list(players.keys()))
             if nParticipants == 0:
                 context.bot.send_message(chat_id=group_id, text="Nobody participated :(")
@@ -146,6 +149,8 @@ def scenehandler(update, context):
             except KeyError:
                 string = "No winners this time :("
             context.bot.send_message(chat_id=group_id, text=string)
+            if string.endswith(":("):
+                return
             table = []
             headers = ["Name", "Score"]
             for i in range(len_winners):
@@ -153,7 +158,7 @@ def scenehandler(update, context):
                 user_id = winners_id[i]
                 score = str(db.search(player.user_id == str(user_id))[0]['score'])
                 table.extend([[name, score]])
-            text = "```{}```".format(str(tabulate(table, headers, tablefmt="presto")))
+            text = "```{}```".format(str(tabulate(table, headers, tablefmt="presto", floatfmt=".2f")))
             context.bot.send_message(chat_id=group_id, text=text, parse_mode=ParseMode.MARKDOWN)
             reset()
     elif text == "/cancel":
@@ -178,9 +183,15 @@ def scenehandler(update, context):
         text = "GAME_STATE: {}\nplayers: {}\ngame_values: {}".format(GAME_STATE, players, game_values)
         context.bot.send_message(chat_id=group_id, text=text)
     elif text == "/leaderboard":
-        table = [["Lulzx", 421],["Somebody", 251],["Josxa", 100]]
+        table = []
+        undecorated = db.all()
+        result = sorted(undecorated, key=operator.itemgetter('score'), reverse=True)
+        for i in range(len(result)):
+            name = result[i]['name']
+            score = result[i]['score']
+            table.extend([[name, score]])
         headers = ["Name", "Score"]
-        text = "```{}```".format(str(tabulate(table, headers, tablefmt="presto")))
+        text = "*Leaderboard*\n```{}```".format(str(tabulate(table, headers, tablefmt="presto", floatfmt=".2f")))
         context.bot.send_message(chat_id=group_id, text=text, parse_mode=ParseMode.MARKDOWN)
 
 
@@ -240,9 +251,11 @@ def query_handler(update, context):
 
 
 def error(update, context):
+    global group_id
     try:
         logger.warning('Update "%s" caused error "%s"', update, context.error)
     except BadRequest:
+        context.bot.send_message(chat_id=group_id, text="Sorry, An error occured. Start again!")
         logger.warning('bad request')
     except TimedOut:
         logger.warning('slow internet')
