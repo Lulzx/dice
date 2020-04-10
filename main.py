@@ -204,6 +204,8 @@ def scenehandler(update, context):
         for i in range(len(result)):
             name = result[i]['name']
             score = (result[i]['score'])
+            if score == 0:
+                continue
             score = str(format_size(parse_size(str(score))))
             table.extend([[name, score]])
         headers = ["Name", "Brain RAM"]
@@ -228,14 +230,14 @@ def reset():
 def scores(winners, names, nParticipants, losers):
     total_winners = len(winners)
     base_reward = 10
+    winning_reward = int(nParticipants*base_reward/total_winners)
     for winner in winners:
         current = db.search(player.user_id == winner)
         if current != []:
             winning_streak = int(current[0]['winning_streak']) + 1
-            if winning_streak == 0 or winning_streak < 0:
+            if winning_streak == 0:
                 winning_streak = 1
-                db.update(set('winning_streak', 0), player.user_id == winner)
-            final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
+            final_score = winning_streak * winning_reward
             db.update(increment('winning_streak'), player.user_id == winner)
             db.update(add('score', final_score), player.user_id == winner)
         else:
@@ -246,17 +248,13 @@ def scores(winners, names, nParticipants, losers):
     for loser in losers:
         current = db.search(player.user_id == loser)
         if current != []:
-            winning_streak = int(current[0]['winning_streak']) - 1
-            if winning_streak == 0:
-                final_score = round(nParticipants*total_winners*base_reward, 2)
-                db.update(subtract('score', final_score), player.user_id == loser)
-                return
-            final_score = round((abs(winning_streak)/winning_streak)*nParticipants*(base_reward/total_winners)**(winning_streak), 3)
-            db.update(set('winning_streak', 0), player.user_id == loser)
             score = db.search(player.user_id == loser)[0]['score']
-            if score + final_score < 0 or score - final_score < 0:
-                final_score = 0
-            db.update(subtract('score', final_score), player.user_id == loser)
+            final_score = winning_reward
+            if score - final_score <= 0:
+                db.update(set('score', 0), player.user_id == loser)
+            else:
+                db.update(subtract('score', final_score), player.user_id == loser)
+            db.update(set('winning_streak', 0), player.user_id == loser)
 
 
 def restricted(func):
