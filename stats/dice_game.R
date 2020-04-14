@@ -116,7 +116,7 @@ game <-
     # FIXME per game, total wins, players who won?
     total_winners = allplayers %>%
       filter(win) %>% count() %>% first()
-    , reward = as.integer((abs(win_streak) / win_streak) *
+    , reward = as.integer(
       # FIXME total per game, or all games?
       # number_of_participants  
       players_n *
