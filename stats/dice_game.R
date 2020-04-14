@@ -92,10 +92,10 @@ game %>%
     , value
     , data = .
     , color = player_id
-    , geom = "line"
+    , geom = "point"
     , alpha = 0.5
   ) +
-  geom_line() +
+  # geom_line() +
   facet_wrap(vars(name))
 
 # players with at least 1 win
