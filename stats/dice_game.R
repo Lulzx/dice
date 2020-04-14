@@ -10,7 +10,7 @@ library(hrbrthemes)
 cfg <-
   list(
     players_per_game = 1:5
-    , games = 300
+    , games = 100
   )
 
 # comment out if this doesn't work
@@ -19,7 +19,7 @@ theme_set(hrbrthemes::theme_ft_rc())
 
 allplayers <- 
   tibble(
-    player_id = 1:20 %>%
+    player_id = 1:10 %>%
       as.factor()
   )
 
@@ -92,10 +92,10 @@ game %>%
     , value
     , data = .
     , color = player_id
-    # , geom = "line"
+    , geom = "line"
     , alpha = 0.5
   ) +
-  # geom_line() +
+  geom_line() +
   facet_wrap(vars(name))
 
 # players with at least 1 win
@@ -116,15 +116,15 @@ game <-
     # FIXME per game, total wins, players who won?
     total_winners = allplayers %>%
       filter(win) %>% count() %>% first()
-    , reward = (abs(win_streak) / win_streak) *
+    , reward = as.integer((abs(win_streak) / win_streak) *
       # FIXME total per game, or all games?
       # number_of_participants  
       players_n *
       (base_reward /
        # FIXME per game, total wins, players who won?
          total_winners
-       ) ^
-      (win_streak)
+       ) *
+      (win_streak))
   )
 
 game %>%
@@ -133,7 +133,7 @@ game %>%
     , reward
     , data = .
     , color = player_id
-    , geom = "jitter"
+    , geom = c("point", "line")
   ) +
   geom_line()
 
