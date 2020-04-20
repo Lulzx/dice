@@ -2,41 +2,68 @@
   <head>
     <title>Statistics</title>
     <link type="text/css" rel="stylesheet" href="./css/lightgallery.min.css" /> 
+    <link type="text/css" rel="stylesheet" href="./css/main.css" /> 
 </head>
 <body>
-  <div id="aniimated-thumbnials">
+  <style type="text/css">
+    body { background: #3a6186;  /* fallback for old browsers */
+background: -webkit-linear-gradient(to right, #89253e, #3a6186);  /* Chrome 10-25, Safari 5.1-6 */
+background: linear-gradient(to right, #89253e, #3a6186); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */}
+ h1 {
+  margin: 1em 0 0.5em 0;
+  font-weight: 600;
+  font-family: 'Titillium Web', sans-serif;
+  position: relative;  
+  font-size: 36px;
+  line-height: 40px;
+  padding: 15px 490px 15px 8%;
+  color: #eee;
+  text-shadow: 2px 2px 20px #000000;
+  box-shadow: 
+    inset 0 0 0 1px rgba(53,86,129, 0.4), 
+    inset 0 0 5px rgba(53,86,129, 0.5),
+    inset 20px -12px 35px #ffffff75;
+  border-radius: 0 10px 0 10px;
+  max-width: fit-content;
+  background: #fff url(./img/background.jpeg) repeat center left;
+}
+  </style>
+  <h1>Dice game data modeling and prediction</h1>
+    <div id="lightgallery" class="demo-gallery">
   <a href="./stats/plots/id_vs_reward-1.png">
-    <img src="./stats/plots/id_vs_reward-1.png" />
+    <img src="./stats/plots/thumbnail_id_vs_reward-1.png" />
   </a>
   <a href="./stats/plots/win-loss_streak_throw-1.png">
-    <img src="./stats/plots/win-loss_streak_throw-1.png" />
+    <img src="./stats/plots/thumbnail_win-loss_streak_throw-1.png" />
   </a>
     <a href="./stats/plots/id_vs_reward-2.png">
-    <img src="./stats/plots/id_vs_reward-2.png" />
+    <img src="./stats/plots/thumbnail_id_vs_reward-2.png" />
   </a>
   <a href="./stats/plots/win-loss_streak_throw-2.png">
-    <img src="./stats/plots/win-loss_streak_throw-2.png" />
+    <img src="./stats/plots/thumbnail_win-loss_streak_throw-2.png" />
   </a>
     <a href="./stats/plots/id_vs_reward-3.png">
-    <img src="./stats/plots/id_vs_reward-3.png" />
+    <img src="./stats/plots/thumbnail_id_vs_reward-3.png" />
   </a>
   <a href="./stats/plots/win-loss_streak_throw-3.png">
-    <img src="./stats/plots/win-loss_streak_throw-3.png" />
+    <img src="./stats/plots/thumbnail_win-loss_streak_throw-3.png" />
   </a>
     <a href="./stats/plots/id_vs_reward-4.png">
-    <img src="./stats/plots/id_vs_reward-4.png" />
+    <img src="./stats/plots/thumbnail_id_vs_reward-4.png" />
   </a>
   <a href="./stats/plots/win-loss_streak_throw-4.png">
-    <img src="./stats/plots/win-loss_streak_throw-4.png" />
+    <img src="./stats/plots/thumbnail_win-loss_streak_throw-4.png" />
   </a>
 </div>
+<hr>
+<footer>Data modeled by Somebody on Earth 🌏</footer>
 <script src="./js/lightgallery.min.js"></script>
 <script src="./js/lg-thumbnail.min.js"></script>
 <script src="./js/lg-fullscreen.min.js"></script>
 <script>
-lightGallery(document.getElementById('aniimated-thumbnials'), {
+lightGallery(document.getElementById('lightgallery'), {
     thumbnail:true
-});
+      }); 
 </script>
 </body>
 </html>
