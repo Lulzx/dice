@@ -1,4 +1,4 @@
-https://github.com/python-telegram-bot/python-telegram-bot/archive/api-4.7.zip
+python-telegram-bot
 humanfriendly
 tabulate
 tinydb
